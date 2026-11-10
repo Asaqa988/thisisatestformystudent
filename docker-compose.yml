@@ -86,10 +86,12 @@ services:
       # The address Chatwoot uses to call us back, also inside the network.
       NEXUS_WEBHOOK_URL: http://backend:8000/api/v1/webhooks/chatwoot
       WEBHOOK_MAX_AGE_SECONDS: ${WEBHOOK_MAX_AGE_SECONDS:-300}
+      # Live reload while teaching: edit a file, uvicorn restarts.
+      UVICORN_RELOAD: "1"
     ports:
       - "127.0.0.1:${NEXUS_API_PORT:-8100}:8000"
     volumes:
-      # Live reload while teaching: edit a file, uvicorn restarts.
+      # Mount the code so edits reach the running container without a rebuild.
       - ./backend:/app
     depends_on:
       nexus-db:

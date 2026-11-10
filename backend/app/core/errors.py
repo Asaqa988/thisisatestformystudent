@@ -29,6 +29,11 @@ class NotFound(AppError):
     code = "not_found"
 
 
+class Unauthorized(AppError):
+    status_code = 401
+    code = "unauthorized"
+
+
 class InvalidSignature(AppError):
     status_code = 401
     code = "invalid_signature"

@@ -15,5 +15,7 @@ COPY . .
 
 EXPOSE 8000
 
-# 1. Bring the database schema up to date.  2. Start the API with live reload.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
+# 1. Bring the database schema up to date.
+# 2. Start the API. Hosting platforms pass the port in $PORT.
+#    UVICORN_RELOAD=1 (set by docker-compose.yml) restarts on code changes while teaching.
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*' ${UVICORN_RELOAD:+--reload}"]

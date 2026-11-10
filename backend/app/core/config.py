@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     # NEXUS database
     database_url: str = "postgresql+psycopg://nexus:nexus@localhost:5433/nexus"
 
+    # When set, every /api/v1 call except webhooks must send this value in the
+    # X-NEXUS-API-Key header. Leave empty for local development.
+    nexus_api_key: str = ""
+
     # Chatwoot: where it lives
     chatwoot_base_url: str = "http://chatwoot-rails:3000"  # used by the backend
     chatwoot_public_url: str = "http://localhost:3110"  # shown to humans
@@ -31,6 +35,17 @@ class Settings(BaseSettings):
     nexus_webhook_url: str = "http://backend:8000/api/v1/webhooks/chatwoot"
     webhook_max_age_seconds: int = 300
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _use_psycopg_driver(cls, value):
+        # Hosting platforms hand out "postgres://..." or "postgresql://...".
+        # SQLAlchemy needs to be told which driver to use.
+        if isinstance(value, str):
+            for prefix in ("postgres://", "postgresql://"):
+                if value.startswith(prefix):
+                    return "postgresql+psycopg://" + value.removeprefix(prefix)
+        return value
+
     @field_validator("chatwoot_account_id", mode="before")
     @classmethod
     def _blank_means_missing(cls, value):
@@ -40,7 +55,11 @@ class Settings(BaseSettings):
         return value
 
     @field_validator(
-        "chatwoot_api_token", "chatwoot_webhook_secret", "chatwoot_inbox_identifier", mode="before"
+        "chatwoot_api_token",
+        "chatwoot_webhook_secret",
+        "chatwoot_inbox_identifier",
+        "nexus_api_key",
+        mode="before",
     )
     @classmethod
     def _strip(cls, value):

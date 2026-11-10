@@ -5,9 +5,10 @@
 Interactive API documentation is generated at /docs.
 """
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from app.api import conversations, dashboard, health, webhooks
+from app.api.deps import require_api_key
 from app.core.errors import register_error_handlers
 
 app = FastAPI(
@@ -18,7 +19,10 @@ app = FastAPI(
 
 register_error_handlers(app)
 
+# Open: liveness checks, and webhooks (they prove themselves with an HMAC signature).
 app.include_router(health.router)
-app.include_router(dashboard.router)
-app.include_router(conversations.router)
 app.include_router(webhooks.router)
+
+# Application API: only the NEXUS frontend server, once NEXUS_API_KEY is set.
+app.include_router(dashboard.router, dependencies=[Depends(require_api_key)])
+app.include_router(conversations.router, dependencies=[Depends(require_api_key)])

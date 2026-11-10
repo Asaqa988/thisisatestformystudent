@@ -43,6 +43,9 @@ async function forward(request: NextRequest, ctx: RouteContext<"/api/nexus/[...p
       headers: {
         Accept: "application/json",
         ...(hasBody ? { "Content-Type": "application/json" } : {}),
+        // Proves to a deployed backend that the call comes from this server.
+        // Read from the server environment; never sent to the browser.
+        ...(process.env.NEXUS_API_KEY ? { "X-NEXUS-API-Key": process.env.NEXUS_API_KEY } : {}),
       },
       body: hasBody ? await request.text() : undefined,
       cache: "no-store",

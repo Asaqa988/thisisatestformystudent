@@ -56,6 +56,7 @@ nexus-ai/
 └── docs/
     ├── architecture.md       layers, flows, decisions
     ├── api-contracts.md      every endpoint and shape
+    ├── deployment.md         Vercel + Railway, protection, gotchas
     └── lessons/lesson-01.md  the lesson: setup, demos, troubleshooting
 ```
 

@@ -10,6 +10,7 @@ replay-webhook       Deliver the most recent webhook a second time
 
 import argparse
 import json
+import os
 import sys
 import time
 
@@ -35,7 +36,8 @@ SUBSCRIPTIONS = [
     "message_updated",
 ]
 
-LOCAL_WEBHOOK_URL = "http://127.0.0.1:8000/api/v1/webhooks/chatwoot"
+# The backend running in this same container. Hosting platforms choose the port.
+LOCAL_WEBHOOK_URL = f"http://127.0.0.1:{os.environ.get('PORT', '8000')}/api/v1/webhooks/chatwoot"
 
 
 def chatwoot_setup(_: argparse.Namespace) -> None:

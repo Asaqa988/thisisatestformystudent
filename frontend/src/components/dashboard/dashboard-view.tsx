@@ -32,6 +32,7 @@ export function DashboardView() {
 
   const data = summary.data;
   const chatwoot = data?.integrations.find((i) => i.key === "chatwoot");
+  const aiAgent = data?.integrations.find((i) => i.key === "ai");
   const awaiting =
     conversations.data?.items.filter(
       (c) => c.status !== "resolved" && c.last_message?.direction === "inbound",
@@ -137,6 +138,13 @@ export function DashboardView() {
                   role="Conversations and messaging"
                   status={chatwoot}
                   loading={summary.isLoading}
+                />
+                <SystemRow
+                  name="AI agent (Claude)"
+                  role="Answers customers from the Knowledge Base"
+                  status={aiAgent}
+                  loading={summary.isLoading}
+                  offLabel="Off"
                 />
                 {PLANNED_SYSTEMS.map((system) => (
                   <li key={system.name} className="flex items-center gap-3 px-4 py-3">
@@ -253,14 +261,16 @@ function SystemRow({
   role,
   status,
   loading,
+  offLabel = "Not responding",
 }: {
   name: string;
   role: string;
   status: IntegrationStatus | undefined;
   loading: boolean;
+  offLabel?: string;
 }) {
   const state = !status ? "idle" : !status.configured ? "setup" : status.ok ? "ok" : "down";
-  const label = { idle: loading ? "Checking" : "Unknown", setup: "Needs setup", ok: "Connected", down: "Not responding" }[state];
+  const label = { idle: loading ? "Checking" : "Unknown", setup: "Needs setup", ok: "Connected", down: offLabel }[state];
 
   return (
     <li className="flex items-center gap-3 px-4 py-3" title={status?.detail}>

@@ -16,6 +16,7 @@ from app.schemas import (
     Author,
     Contact,
     ConversationSnapshot,
+    EventMessage,
     InboundEvent,
     LastMessage,
     MessageOut,
@@ -218,12 +219,23 @@ def _message_event(event_type: str, account_id: str | None, payload: dict) -> In
     else:
         summary = f"{author.name}: {to_preview(payload.get('content'))}"
 
+    message = None
+    if payload.get("id") is not None:
+        message = EventMessage(
+            external_id=str(payload.get("id")),
+            direction=direction,
+            author_type=author.type,
+            private=bool(payload.get("private")),
+            content=payload.get("content") or "",
+        )
+
     return InboundEvent(
         event_type=event_type,
         external_account_id=account_id,
         external_conversation_id=snapshot.external_id if snapshot else None,
         summary=summary[:300],
         conversation=snapshot,
+        message=message,
     )
 
 

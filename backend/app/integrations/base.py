@@ -26,6 +26,9 @@ class MessagingAdapter(Protocol):
     def send_message(self, external_conversation_id: str, content: str) -> MessageOut:
         """Send a reply to the customer and return the message that was created."""
 
+    def add_private_note(self, external_conversation_id: str, content: str) -> None:
+        """Leave a note only agents can see, never the customer."""
+
     def verify_webhook(self, raw_body: bytes, headers: Mapping[str, str]) -> None:
         """Raise InvalidSignature unless the request provably came from the system."""
 

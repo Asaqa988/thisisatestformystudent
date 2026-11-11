@@ -52,7 +52,9 @@ async function forward(request: NextRequest, ctx: RouteContext<"/api/nexus/[...p
       signal: AbortSignal.timeout(20_000),
     });
 
-    return new Response(await upstream.text(), {
+    // 204 and 304 responses must not carry a body.
+    const body = upstream.status === 204 || upstream.status === 304 ? null : await upstream.text();
+    return new Response(body, {
       status: upstream.status,
       headers: {
         "Content-Type": upstream.headers.get("content-type") ?? "application/json",
@@ -68,4 +70,4 @@ async function forward(request: NextRequest, ctx: RouteContext<"/api/nexus/[...p
   }
 }
 
-export { forward as GET, forward as POST };
+export { forward as DELETE, forward as GET, forward as POST, forward as PUT };

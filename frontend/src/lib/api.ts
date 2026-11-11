@@ -37,7 +37,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(0, "network_error", "Could not reach NEXUS. Check your connection.");
   }
 
-  const body = await response.json().catch(() => null);
+  const body = response.status === 204 ? null : await response.json().catch(() => null);
 
   if (!response.ok) {
     const error = body?.error;

@@ -29,6 +29,8 @@ export interface Conversation {
   last_message: LastMessage | null;
   unread_count: number;
   updated_at: string;
+  ai_enabled: boolean;
+  ai_paused_reason: string | null;
 }
 
 export interface Message {
@@ -76,4 +78,38 @@ export interface WebhookEvent {
 
 export interface ItemList<T> {
   items: T[];
+}
+
+export interface KnowledgeArticle {
+  id: string;
+  title: string;
+  content: string;
+  updated_at: string;
+}
+
+export interface KnowledgeList {
+  items: KnowledgeArticle[];
+  total_chars: number;
+}
+
+export interface AISettings {
+  enabled: boolean;
+  business_name: string;
+  instructions: string;
+  configured: boolean;
+  model: string;
+}
+
+export type AIReplyStatus = "pending" | "sending" | "sent" | "handoff" | "skipped" | "error";
+
+export interface AIReply {
+  id: string;
+  conversation_id: string;
+  contact_name: string;
+  status: AIReplyStatus;
+  reply_text: string | null;
+  reason: string | null;
+  input_tokens: number;
+  output_tokens: number;
+  created_at: string;
 }

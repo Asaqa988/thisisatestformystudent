@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Bot,
   FolderKanban,
   Inbox,
@@ -35,7 +36,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Operations",
     items: [
-      { href: "/ai-employees", label: "AI Employees", icon: Bot, upcoming: true },
+      { href: "/ai-employees", label: "AI Employees", icon: Bot },
+      { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
       { href: "/projects", label: "Projects", icon: FolderKanban, upcoming: true },
       { href: "/campaigns", label: "Campaigns", icon: Megaphone, upcoming: true },
       { href: "/approvals", label: "Approvals", icon: ShieldCheck, upcoming: true },

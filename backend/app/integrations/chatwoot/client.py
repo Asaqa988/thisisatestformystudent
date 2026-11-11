@@ -55,8 +55,8 @@ class ChatwootClient:
         data = self._request("GET", self._account(f"/conversations/{conversation_id}/messages"))
         return data.get("payload", [])
 
-    def create_message(self, conversation_id: str, content: str) -> dict:
-        body = {"content": content, "message_type": "outgoing", "private": False}
+    def create_message(self, conversation_id: str, content: str, private: bool = False) -> dict:
+        body = {"content": content, "message_type": "outgoing", "private": private}
         return self._request(
             "POST", self._account(f"/conversations/{conversation_id}/messages"), json=body
         )

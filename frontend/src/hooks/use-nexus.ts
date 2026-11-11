@@ -7,10 +7,13 @@ import useSWR from "swr";
 
 import { ApiError, fetcher } from "@/lib/api";
 import type {
+  AIReply,
+  AISettings,
   Conversation,
   DashboardSummary,
   IntegrationStatus,
   ItemList,
+  KnowledgeList,
   Message,
   WebhookEvent,
 } from "@/lib/types";
@@ -54,6 +57,21 @@ export function useEvents(limit = 12) {
 export function useChatwootStatus() {
   return useSWR<IntegrationStatus, ApiError>("/api/v1/integrations/chatwoot/status", fetcher, {
     refreshInterval: SLOW_REFRESH_MS,
+    ...retry,
+  });
+}
+
+export function useKnowledge() {
+  return useSWR<KnowledgeList, ApiError>("/api/v1/knowledge", fetcher, retry);
+}
+
+export function useAISettings() {
+  return useSWR<AISettings, ApiError>("/api/v1/ai/settings", fetcher, retry);
+}
+
+export function useAIActivity(limit = 30) {
+  return useSWR<ItemList<AIReply>, ApiError>(`/api/v1/ai/activity?limit=${limit}`, fetcher, {
+    refreshInterval: LIST_REFRESH_MS,
     ...retry,
   });
 }

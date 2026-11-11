@@ -11,12 +11,14 @@ from app.core.errors import NotFound
 from app.integrations.base import MessagingAdapter
 from app.models import Conversation
 from app.schemas import (
+    Author,
     Contact,
     ConversationOut,
     ConversationSnapshot,
     LastMessage,
     MessageOut,
 )
+from app.services.ai_agent import ai_message_ids
 
 UNKNOWN_CONTACT = "Unknown contact"
 
@@ -42,6 +44,8 @@ def to_out(row: Conversation) -> ConversationOut:
         last_message=last,
         unread_count=row.unread_count,
         updated_at=row.updated_at,
+        ai_enabled=row.ai_enabled,
+        ai_paused_reason=row.ai_paused_reason,
     )
 
 
@@ -129,7 +133,23 @@ def list_messages(
     db: Session, adapter: MessagingAdapter, conversation_id: uuid.UUID
 ) -> list[MessageOut]:
     row = get_conversation(db, conversation_id)
-    return adapter.list_messages(row.external_id)
+    messages = adapter.list_messages(row.external_id)
+
+    # Show which replies the AI wrote. The source system only knows they were
+    # sent with the agent's API token.
+    ai_ids = ai_message_ids(db, row.id)
+    for message in messages:
+        if message.id in ai_ids:
+            message.author = Author(type="bot", name="NEXUS AI")
+    return messages
+
+
+def set_ai_enabled(db: Session, conversation_id: uuid.UUID, enabled: bool) -> Conversation:
+    row = get_conversation(db, conversation_id)
+    row.ai_enabled = enabled
+    row.ai_paused_reason = None if enabled else "Turned off by a team member."
+    db.commit()
+    return row
 
 
 def send_reply(
@@ -137,6 +157,12 @@ def send_reply(
 ) -> MessageOut:
     row = get_conversation(db, conversation_id)
     message = adapter.send_message(row.external_id, content)
+
+    # A person is handling this conversation now; the AI steps back.
+    if row.ai_enabled:
+        row.ai_enabled = False
+        row.ai_paused_reason = "A team member replied from NEXUS, so the AI stepped back."
+        db.commit()
 
     # Update our reference right away, so the list is correct before the
     # webhook for this same message comes back from Chatwoot.

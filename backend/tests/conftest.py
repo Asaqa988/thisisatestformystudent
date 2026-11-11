@@ -59,7 +59,12 @@ def _schema():
 @pytest.fixture(autouse=True)
 def _clean_tables():
     with engine.begin() as connection:
-        connection.execute(text("TRUNCATE webhook_events, conversations"))
+        connection.execute(
+            text(
+                "TRUNCATE webhook_events, ai_replies, conversations,"
+                " knowledge_articles, ai_settings"
+            )
+        )
     yield
 
 

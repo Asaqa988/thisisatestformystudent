@@ -100,6 +100,20 @@ export function InboxView() {
     }
   }
 
+  async function toggleAI(enabled: boolean) {
+    if (!selectedId) return;
+    try {
+      await api(`/api/v1/conversations/${selectedId}/ai`, {
+        method: "POST",
+        body: JSON.stringify({ enabled }),
+      });
+      await conversations.mutate();
+      toast.success(enabled ? "AI resumed for this conversation" : "AI paused for this conversation");
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Could not change the AI setting");
+    }
+  }
+
   const listError = conversations.error;
 
   return (
@@ -159,6 +173,7 @@ export function InboxView() {
               onRetry={() => messages.mutate()}
               onBack={() => select(null)}
               onSend={send}
+              onToggleAI={toggleAI}
             />
           ) : (
             <NothingSelected hasConversations={all.length > 0} />

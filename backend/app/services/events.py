@@ -2,6 +2,7 @@
 
 import hashlib
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select, update
@@ -11,7 +12,26 @@ from sqlalchemy.orm import Session
 from app.integrations.base import MessagingAdapter
 from app.models import Conversation, WebhookEvent
 from app.schemas import ConversationCounts, EventCounts, WebhookAck
+from app.services.ai_agent import is_ai_message
 from app.services.inbox import upsert_conversation
+
+
+@dataclass
+class AITrigger:
+    """A new customer message the AI agent should look at."""
+
+    conversation_id: uuid.UUID
+    message_id: str
+
+
+@dataclass
+class IngestResult:
+    ack: WebhookAck
+    ai_trigger: AITrigger | None = None
+
+    @property
+    def status(self) -> str:
+        return self.ack.status
 
 
 def dedupe_key_for(delivery_id: str | None, raw_body: bytes) -> str:
@@ -33,7 +53,7 @@ def ingest_webhook(
     raw_body: bytes,
     payload: dict,
     delivery_id: str | None,
-) -> WebhookAck:
+) -> IngestResult:
     """Record a verified webhook exactly once and apply what it tells us.
 
     Webhook senders retry when they are unsure a delivery arrived, so receiving
@@ -74,14 +94,42 @@ def ingest_webhook(
             .returning(WebhookEvent.id)
         ).scalar_one()
         db.commit()
-        return WebhookAck(status="duplicate", event_id=existing_id)
+        return IngestResult(WebhookAck(status="duplicate", event_id=existing_id))
 
+    trigger = None
     if event.conversation is not None:
-        upsert_conversation(db, adapter.key, event.conversation)
+        conversation = upsert_conversation(db, adapter.key, event.conversation)
+        trigger = _react_to_message(db, conversation, event)
 
     # One commit: the event row and the conversation change succeed or fail together.
     db.commit()
-    return WebhookAck(status="accepted" if acted_on else "ignored", event_id=inserted_id)
+    ack = WebhookAck(status="accepted" if acted_on else "ignored", event_id=inserted_id)
+    return IngestResult(ack, trigger)
+
+
+def _react_to_message(db: Session, conversation: Conversation, event) -> AITrigger | None:
+    """Decide what a new message means for the AI agent.
+
+    - A customer message: the agent should look at it.
+    - A reply a team member wrote (not the AI): the agent steps back from this
+      conversation, so it never talks over a person.
+    """
+    message = event.message
+    if event.event_type != "message_created" or message is None or message.private:
+        return None
+
+    if message.direction == "inbound" and message.author_type == "contact":
+        return AITrigger(conversation_id=conversation.id, message_id=message.external_id)
+
+    if (
+        message.direction == "outbound"
+        and message.author_type == "agent"
+        and conversation.ai_enabled
+        and not is_ai_message(db, conversation.id, message.external_id, message.content)
+    ):
+        conversation.ai_enabled = False
+        conversation.ai_paused_reason = "A team member replied, so the AI stepped back."
+    return None
 
 
 def recent_events(db: Session, limit: int = 20) -> list[WebhookEvent]:

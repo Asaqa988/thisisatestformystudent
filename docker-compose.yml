@@ -86,6 +86,10 @@ services:
       # The address Chatwoot uses to call us back, also inside the network.
       NEXUS_WEBHOOK_URL: http://backend:8000/api/v1/webhooks/chatwoot
       WEBHOOK_MAX_AGE_SECONDS: ${WEBHOOK_MAX_AGE_SECONDS:-300}
+      # AI agent (Claude). Without a key the agent stays off.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-opus-5-5}
+      AI_EFFORT: ${AI_EFFORT:-low}
       # Live reload while teaching: edit a file, uvicorn restarts.
       UVICORN_RELOAD: "1"
     ports:

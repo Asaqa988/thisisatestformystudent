@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowLeft, Lock } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { ArrowLeft, Lock, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { CustomerAvatar } from "@/components/customer-avatar";
 import { ErrorNotice, SetupNotice } from "@/components/notices";
@@ -29,6 +29,7 @@ export function Thread({
   onRetry,
   onBack,
   onSend,
+  onToggleAI,
 }: {
   conversation: Conversation;
   messages: Message[] | undefined;
@@ -37,6 +38,7 @@ export function Thread({
   onRetry: () => void;
   onBack: () => void;
   onSend: (content: string) => Promise<void>;
+  onToggleAI: (enabled: boolean) => Promise<void>;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const count = messages?.length ?? 0;
@@ -76,6 +78,7 @@ export function Thread({
         >
           {conversation.status}
         </span>
+        <AIToggle enabled={conversation.ai_enabled} onToggle={onToggleAI} />
       </header>
 
       <div ref={scrollRef} className="scroll-quiet min-h-0 flex-1 overflow-y-auto bg-muted/30">
@@ -116,6 +119,22 @@ export function Thread({
         </div>
       </div>
 
+      {!conversation.ai_enabled && conversation.ai_paused_reason && (
+        <div className="flex shrink-0 items-center gap-2 border-t bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground sm:px-4">
+          <Sparkles className="size-3.5 shrink-0" />
+          <span className="min-w-0 flex-1 truncate" title={conversation.ai_paused_reason}>
+            AI paused: {conversation.ai_paused_reason}
+          </span>
+          <button
+            type="button"
+            onClick={() => void onToggleAI(true)}
+            className="shrink-0 font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            Resume AI
+          </button>
+        </div>
+      )}
+
       <Composer
         key={conversation.id}
         disabled={Boolean(error?.notConfigured)}
@@ -147,6 +166,7 @@ function MessageItem({ message }: { message: Message }) {
 
   const outbound = message.direction === "outbound";
   const pending = message.id.startsWith("pending-");
+  const byAI = message.author.type === "bot";
 
   return (
     <div className={cn("my-1 flex flex-col", outbound ? "items-end" : "items-start")}>
@@ -155,9 +175,11 @@ function MessageItem({ message }: { message: Message }) {
           "max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm leading-relaxed sm:max-w-[75%]",
           message.private
             ? "rounded-br-md border border-dashed border-attention/50 bg-attention-soft text-foreground"
-            : outbound
-              ? "rounded-br-md bg-primary text-primary-foreground"
-              : "rounded-bl-md border bg-card",
+            : byAI
+              ? "rounded-br-md border border-brand/25 bg-brand-soft text-foreground"
+              : outbound
+                ? "rounded-br-md bg-primary text-primary-foreground"
+                : "rounded-bl-md border bg-card",
           pending && "opacity-60",
         )}
       >
@@ -166,11 +188,51 @@ function MessageItem({ message }: { message: Message }) {
             <Lock className="size-3" /> Internal note
           </span>
         )}
-        {message.content || <span className="italic opacity-70">No text content</span>}
+        <span dir="auto">
+          {message.content || <span className="italic opacity-70">No text content</span>}
+        </span>
       </div>
-      <span className="mt-1 px-1 text-[11px] text-muted-foreground">
+      <span className="mt-1 flex items-center gap-1 px-1 text-[11px] text-muted-foreground">
+        {byAI && <Sparkles className="size-3 text-brand" />}
         {pending ? "Sending…" : `${message.author.name} · ${clockTime(message.sent_at)}`}
       </span>
     </div>
+  );
+}
+
+function AIToggle({
+  enabled,
+  onToggle,
+}: {
+  enabled: boolean;
+  onToggle: (enabled: boolean) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      aria-pressed={enabled}
+      title={
+        enabled
+          ? "The AI agent answers this conversation. Click to pause it."
+          : "The AI agent is paused here. Click to resume."
+      }
+      onClick={async () => {
+        setBusy(true);
+        try {
+          await onToggle(!enabled);
+        } finally {
+          setBusy(false);
+        }
+      }}
+      className={cn(
+        "flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
+        enabled ? "border-brand/30 bg-brand-soft text-brand" : "text-muted-foreground hover:bg-muted",
+      )}
+    >
+      <Sparkles className="size-3" />
+      {enabled ? "AI on" : "AI paused"}
+    </button>
   );
 }

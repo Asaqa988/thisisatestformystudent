@@ -12,6 +12,9 @@ sqlalchemy==2.1.8
 psycopg[binary]==3.3.8
 alembic==1.20.1
 
+# Claude, for the AI agent
+anthropic==2.8.0
+
 # HTTP client for calling Chatwoot (also used by FastAPI's test client)
 httpx==0.28.1
 

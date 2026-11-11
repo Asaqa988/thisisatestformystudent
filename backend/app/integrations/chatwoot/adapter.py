@@ -95,6 +95,9 @@ class ChatwootAdapter:
     def send_message(self, external_conversation_id: str, content: str) -> MessageOut:
         return mapper.to_message(self.client.create_message(external_conversation_id, content))
 
+    def add_private_note(self, external_conversation_id: str, content: str) -> None:
+        self.client.create_message(external_conversation_id, content, private=True)
+
     # --- Webhooks ----------------------------------------------------------------
 
     def verify_webhook(self, raw_body: bytes, headers: Mapping[str, str]) -> None:

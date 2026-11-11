@@ -52,6 +52,16 @@ class ConversationSnapshot(BaseModel):
     unread_count: int = 0
 
 
+class EventMessage(BaseModel):
+    """The message a message event is about."""
+
+    external_id: str
+    direction: MessageDirection
+    author_type: AuthorType
+    private: bool = False
+    content: str = ""
+
+
 class InboundEvent(BaseModel):
     """A webhook after an adapter has read it."""
 
@@ -61,6 +71,8 @@ class InboundEvent(BaseModel):
     summary: str = ""
     # Present when the event tells us something about a conversation.
     conversation: ConversationSnapshot | None = None
+    # Present on message events.
+    message: EventMessage | None = None
 
 
 # --- What the API returns ----------------------------------------------------
@@ -77,6 +89,8 @@ class ConversationOut(BaseModel):
     last_message: LastMessage | None
     unread_count: int
     updated_at: datetime
+    ai_enabled: bool = True
+    ai_paused_reason: str | None = None
 
 
 class MessageOut(BaseModel):
@@ -149,3 +163,57 @@ class DashboardSummary(BaseModel):
     conversations: ConversationCounts
     events: EventCounts
     integrations: list[IntegrationStatus]
+
+
+# --- Knowledge base and AI agent ------------------------------------------------
+
+
+class KnowledgeArticleIn(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1, max_length=50_000)
+
+
+class KnowledgeArticleOut(BaseModel):
+    id: UUID
+    title: str
+    content: str
+    updated_at: datetime
+
+
+class KnowledgeArticleList(BaseModel):
+    items: list[KnowledgeArticleOut]
+    total_chars: int
+
+
+class AISettingsIn(BaseModel):
+    enabled: bool
+    business_name: str = Field(default="", max_length=120)
+    instructions: str = Field(default="", max_length=8_000)
+
+
+class AISettingsOut(AISettingsIn):
+    configured: bool  # an API key is present on the server
+    model: str
+
+
+AIReplyStatus = Literal["pending", "sending", "sent", "handoff", "skipped", "error"]
+
+
+class AIReplyOut(BaseModel):
+    id: UUID
+    conversation_id: UUID
+    contact_name: str
+    status: AIReplyStatus
+    reply_text: str | None
+    reason: str | None
+    input_tokens: int
+    output_tokens: int
+    created_at: datetime
+
+
+class AIReplyList(BaseModel):
+    items: list[AIReplyOut]
+
+
+class ConversationAIIn(BaseModel):
+    enabled: bool

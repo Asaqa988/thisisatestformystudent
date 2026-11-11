@@ -35,6 +35,20 @@ class Settings(BaseSettings):
     nexus_webhook_url: str = "http://backend:8000/api/v1/webhooks/chatwoot"
     webhook_max_age_seconds: int = 300
 
+    # AI agent (Claude). Without a key the agent stays off and says why.
+    anthropic_api_key: str = ""
+    ai_model: str = "claude-opus-5-5"
+    # Thinking depth: low | medium | high | xhigh | max. "low" suits short chat replies.
+    ai_effort: str = "low"
+    # Wait this long after a customer message before answering, so several
+    # quick messages get one reply instead of one each.
+    ai_debounce_seconds: float = 4.0
+    # Safety brake: at most this many AI replies per conversation per hour.
+    ai_max_replies_per_hour: int = 12
+    # Below this size the whole knowledge base is given to the model; above it,
+    # only the articles that best match the conversation.
+    kb_full_context_chars: int = 120_000
+
     @field_validator("database_url", mode="before")
     @classmethod
     def _use_psycopg_driver(cls, value):
@@ -59,6 +73,7 @@ class Settings(BaseSettings):
         "chatwoot_webhook_secret",
         "chatwoot_inbox_identifier",
         "nexus_api_key",
+        "anthropic_api_key",
         mode="before",
     )
     @classmethod

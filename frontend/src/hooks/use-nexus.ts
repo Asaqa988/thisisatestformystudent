@@ -9,6 +9,9 @@ import { ApiError, fetcher } from "@/lib/api";
 import type {
   AIReply,
   AISettings,
+  AutomationDetail,
+  AutomationRun,
+  AutomationSummary,
   Conversation,
   CustomerDetail,
   CustomerList,
@@ -95,4 +98,30 @@ export function useCustomer(customerId: string | null) {
     fetcher,
     { refreshInterval: SLOW_REFRESH_MS, ...retry },
   );
+}
+
+export function useAutomations() {
+  return useSWR<ItemList<AutomationSummary>, ApiError>("/api/v1/automations", fetcher, {
+    refreshInterval: LIST_REFRESH_MS,
+    ...retry,
+  });
+}
+
+/** Polls quickly while the crew is still building the automation. */
+export function useAutomation(automationId: string | null) {
+  return useSWR<AutomationDetail, ApiError>(
+    automationId ? `/api/v1/automations/${automationId}` : null,
+    fetcher,
+    {
+      refreshInterval: (data) => (data?.status === "building" ? 2000 : SLOW_REFRESH_MS),
+      ...retry,
+    },
+  );
+}
+
+export function useApprovals() {
+  return useSWR<ItemList<AutomationRun>, ApiError>("/api/v1/approvals", fetcher, {
+    refreshInterval: LIST_REFRESH_MS,
+    ...retry,
+  });
 }

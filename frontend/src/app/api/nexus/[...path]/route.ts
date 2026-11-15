@@ -41,7 +41,7 @@ async function forward(request: NextRequest, ctx: RouteContext<"/api/nexus/[...p
       method: request.method,
       // Forward only what the backend needs. Cookies and other headers stay here.
       headers: {
-        Accept: "application/json",
+        Accept: "application/json, */*",
         ...(hasBody ? { "Content-Type": "application/json" } : {}),
         // Proves to a deployed backend that the call comes from this server.
         // Read from the server environment; never sent to the browser.
@@ -52,13 +52,22 @@ async function forward(request: NextRequest, ctx: RouteContext<"/api/nexus/[...p
       signal: AbortSignal.timeout(20_000),
     });
 
-    // 204 and 304 responses must not carry a body.
-    const body = upstream.status === 204 || upstream.status === 304 ? null : await upstream.text();
+    // 204 and 304 responses must not carry a body. Files (such as Excel exports)
+    // are passed through as bytes; reading them as text would corrupt them.
+    const contentType = upstream.headers.get("content-type") ?? "application/json";
+    const body =
+      upstream.status === 204 || upstream.status === 304
+        ? null
+        : contentType.includes("json") || contentType.startsWith("text/")
+          ? await upstream.text()
+          : await upstream.arrayBuffer();
+    const disposition = upstream.headers.get("content-disposition");
     return new Response(body, {
       status: upstream.status,
       headers: {
-        "Content-Type": upstream.headers.get("content-type") ?? "application/json",
+        "Content-Type": contentType,
         "Cache-Control": "no-store",
+        ...(disposition ? { "Content-Disposition": disposition } : {}),
       },
     });
   } catch {

@@ -7,7 +7,16 @@ Interactive API documentation is generated at /docs.
 
 from fastapi import Depends, FastAPI
 
-from app.api import ai, conversations, customers, dashboard, health, knowledge, webhooks
+from app.api import (
+    ai,
+    automations,
+    conversations,
+    customers,
+    dashboard,
+    health,
+    knowledge,
+    webhooks,
+)
 from app.api.deps import require_api_key
 from app.core.errors import register_error_handlers
 
@@ -29,3 +38,4 @@ app.include_router(conversations.router, dependencies=[Depends(require_api_key)]
 app.include_router(customers.router, dependencies=[Depends(require_api_key)])
 app.include_router(knowledge.router, dependencies=[Depends(require_api_key)])
 app.include_router(ai.router, dependencies=[Depends(require_api_key)])
+app.include_router(automations.router, dependencies=[Depends(require_api_key)])

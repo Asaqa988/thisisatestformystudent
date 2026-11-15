@@ -35,6 +35,9 @@ class MessagingAdapter(Protocol):
     def get_customer(self, external_customer_id: str) -> CustomerSnapshot | None:
         """Fetch one customer's full details, including every channel they used."""
 
+    def set_conversation_status(self, external_conversation_id: str, status: str) -> None:
+        """Open or resolve a conversation."""
+
     def add_private_note(self, external_conversation_id: str, content: str) -> None:
         """Leave a note only agents can see, never the customer."""
 

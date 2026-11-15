@@ -61,6 +61,13 @@ class ChatwootClient:
             "POST", self._account(f"/conversations/{conversation_id}/messages"), json=body
         )
 
+    def set_conversation_status(self, conversation_id: str, status: str) -> dict:
+        return self._request(
+            "POST",
+            self._account(f"/conversations/{conversation_id}/toggle_status"),
+            json={"status": status},
+        )
+
     def get_contact(self, contact_id: str) -> dict:
         return self._request("GET", self._account(f"/contacts/{contact_id}")).get("payload") or {}
 

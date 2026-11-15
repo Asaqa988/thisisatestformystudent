@@ -61,7 +61,8 @@ def _clean_tables():
     with engine.begin() as connection:
         connection.execute(
             text(
-                "TRUNCATE webhook_events, ai_replies, conversations, customers,"
+                "TRUNCATE webhook_events, ai_replies, automation_files, automation_runs,"
+                " automations, conversations, customers,"
                 " knowledge_articles, ai_settings"
             )
         )
@@ -109,6 +110,8 @@ class FakeChatwoot:
                 message_id=900, message_type=1, content=body["content"], created_at=int(time.time())
             )
             return httpx.Response(200, json=created)
+        if path.endswith("/toggle_status") and request.method == "POST":
+            return httpx.Response(200, json={"payload": {"success": True}})
         return httpx.Response(404, json={"error": "Resource could not be found"})
 
     @property

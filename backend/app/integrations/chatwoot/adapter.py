@@ -106,6 +106,9 @@ class ChatwootAdapter:
             {**self.client.get_contact(external_customer_id), "type": "contact"}
         )
 
+    def set_conversation_status(self, external_conversation_id: str, status: str) -> None:
+        self.client.set_conversation_status(external_conversation_id, status)
+
     def add_private_note(self, external_conversation_id: str, content: str) -> None:
         self.client.create_message(external_conversation_id, content, private=True)
 

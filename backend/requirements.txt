@@ -15,6 +15,12 @@ alembic==1.20.1
 # Claude, for the AI agent
 anthropic==2.8.0
 
+# Automation builder: CrewAI plans automations, openpyxl writes Excel files.
+# CrewAI talks to Claude through our own LLM class (app/automations/crew.py), so
+# its Anthropic extra (which would downgrade the SDK above) is not installed.
+crewai==1.15.41
+openpyxl==3.1.5
+
 # HTTP client for calling Chatwoot (also used by FastAPI's test client)
 httpx==0.28.1
 

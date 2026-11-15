@@ -9,6 +9,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
+from app.automations.executor import is_automation_message
 from app.integrations.base import MessagingAdapter
 from app.models import Conversation, WebhookEvent
 from app.schemas import ConversationCounts, EventCounts, WebhookAck
@@ -130,6 +131,7 @@ def _react_to_message(db: Session, conversation: Conversation, event) -> AITrigg
         and message.author_type == "agent"
         and conversation.ai_enabled
         and not is_ai_message(db, conversation.id, message.external_id, message.content)
+        and not is_automation_message(db, conversation.id, message.content)
     ):
         conversation.ai_enabled = False
         conversation.ai_paused_reason = "A team member replied, so the AI stepped back."

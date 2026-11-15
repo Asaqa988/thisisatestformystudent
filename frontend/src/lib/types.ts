@@ -148,3 +148,74 @@ export interface CustomerDetail extends CustomerSummary {
   updated_at: string;
   conversations: Conversation[];
 }
+
+export type AutomationStatus = "building" | "ready" | "unsupported" | "failed";
+export type RunStatus = "running" | "awaiting_approval" | "succeeded" | "failed" | "rejected";
+
+export interface AutomationStep {
+  id: string;
+  tool: string;
+  kind: "read" | "action" | "unknown";
+  description: string;
+  params: Record<string, unknown>;
+}
+
+export interface RunOutput {
+  step_id: string;
+  tool: string;
+  kind: "customers" | "conversations" | "file" | "summary" | "action" | "action_result";
+  count: number;
+  summary: string;
+  file_id?: string;
+  filename?: string;
+  size?: number;
+  table?: { group: string; count: number }[];
+}
+
+export interface PendingAction {
+  step_id: string;
+  tool: string;
+  label: string;
+  text?: string;
+  status?: string;
+  enabled?: boolean;
+  target_count: number;
+  targets: { conversation_id: string; name: string; channel: string; status: string }[];
+}
+
+export interface AutomationRun {
+  id: string;
+  automation_id: string;
+  automation_title: string | null;
+  status: RunStatus;
+  outputs: RunOutput[];
+  pending_actions: PendingAction[];
+  error: string | null;
+  files: { id: string; filename: string; size: number }[];
+  started_at: string;
+  finished_at: string | null;
+  decided_at: string | null;
+}
+
+export interface AutomationSummary {
+  id: string;
+  title: string;
+  request_text: string;
+  language: string | null;
+  summary: string | null;
+  status: AutomationStatus;
+  error: string | null;
+  review_notes: string | null;
+  needs_approval: boolean;
+  input_tokens: number;
+  output_tokens: number;
+  run_count: number;
+  last_run_at: string | null;
+  last_run_status: RunStatus | null;
+  created_at: string;
+}
+
+export interface AutomationDetail extends AutomationSummary {
+  steps: AutomationStep[];
+  runs: AutomationRun[];
+}

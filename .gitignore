@@ -25,3 +25,8 @@ Thumbs.db
 
 # Local agent tooling
 .claude/
+
+# Exported spreadsheets contain customer data: never commit them
+*.xlsx
+*.xls
+*.csv

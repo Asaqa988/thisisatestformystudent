@@ -433,6 +433,10 @@ def test_nobody_reachable_means_nothing_to_approve(client, builder, fake_chatwoo
 
     assert run["status"] == "succeeded"
     assert run["pending_actions"][0]["target_count"] == 0
+    assert run["outputs"][-1]["summary"] == (
+        "Nothing to do for send a message: no conversation can receive it "
+        "(1 left out: outside the 24-hour reply window)"
+    )
     assert posted_messages(fake_chatwoot) == []
 
 

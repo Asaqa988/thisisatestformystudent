@@ -149,9 +149,7 @@ def start_run(
                         "tool": step.tool,
                         "kind": "action",
                         "count": action["target_count"],
-                        "summary": f"Waiting for approval: {action['label'].lower()} "
-                        f"for {action['target_count']} conversation"
-                        f"{'' if action['target_count'] == 1 else 's'}",
+                        "summary": _action_summary(action),
                     }
                 )
 
@@ -215,6 +213,19 @@ def _prepare_action(
         "targets": [_target(c) for c in conversations],
         "skipped": skipped,
     }
+
+
+def _action_summary(action: dict) -> str:
+    count = action["target_count"]
+    skipped = len(action.get("skipped") or [])
+    left_out = f" ({skipped} left out: outside the 24-hour reply window)" if skipped else ""
+    if count == 0:
+        return (
+            f"Nothing to do for {action['label'].lower()}: no conversation can receive it{left_out}"
+        )
+    plural = "" if count == 1 else "s"
+    label = action["label"].lower()
+    return f"Waiting for approval: {label} for {count} conversation{plural}{left_out}"
 
 
 def _target(conversation: Conversation) -> dict:

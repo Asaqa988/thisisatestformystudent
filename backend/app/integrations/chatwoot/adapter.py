@@ -9,7 +9,13 @@ from app.core.config import Settings
 from app.core.errors import AppError, IntegrationNotConfigured
 from app.integrations.chatwoot import mapper, signature
 from app.integrations.chatwoot.client import ChatwootClient
-from app.schemas import ConversationSnapshot, InboundEvent, IntegrationStatus, MessageOut
+from app.schemas import (
+    ConversationSnapshot,
+    CustomerSnapshot,
+    InboundEvent,
+    IntegrationStatus,
+    MessageOut,
+)
 
 # The dashboard asks for the status every few seconds. Remember the answer
 # briefly so we do not call Chatwoot on every poll.
@@ -94,6 +100,11 @@ class ChatwootAdapter:
 
     def send_message(self, external_conversation_id: str, content: str) -> MessageOut:
         return mapper.to_message(self.client.create_message(external_conversation_id, content))
+
+    def get_customer(self, external_customer_id: str) -> CustomerSnapshot | None:
+        return mapper.to_customer(
+            {**self.client.get_contact(external_customer_id), "type": "contact"}
+        )
 
     def add_private_note(self, external_conversation_id: str, content: str) -> None:
         self.client.create_message(external_conversation_id, content, private=True)

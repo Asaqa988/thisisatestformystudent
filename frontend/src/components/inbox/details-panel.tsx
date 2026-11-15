@@ -1,3 +1,6 @@
+import { ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+
 import { CustomerAvatar } from "@/components/customer-avatar";
 import { channelLabel, relativeTime } from "@/lib/format";
 import type { Conversation } from "@/lib/types";
@@ -27,8 +30,20 @@ export function DetailsPanel({ conversation }: { conversation: Conversation }) {
         <Row label="NEXUS id" value={<Mono>{conversation.id.slice(0, 8)}</Mono>} />
       </dl>
 
+      {conversation.customer_id && (
+        <div className="border-b px-4 py-3">
+          <Link
+            href={`/customers?id=${conversation.customer_id}`}
+            className="inline-flex items-center gap-1 text-[13px] font-medium underline-offset-4 hover:underline"
+          >
+            View customer profile
+            <ArrowUpRight className="size-3.5" />
+          </Link>
+        </div>
+      )}
+
       <p className="px-4 py-4 text-[12px] leading-relaxed text-muted-foreground">
-        Deals, tasks and the full customer history appear here once Twenty CRM and Plane are connected.
+        Deals and tasks appear here once Twenty CRM and Plane are connected.
       </p>
     </div>
   );

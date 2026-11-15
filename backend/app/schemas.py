@@ -50,6 +50,7 @@ class ConversationSnapshot(BaseModel):
     contact: Contact
     last_message: LastMessage | None = None
     unread_count: int = 0
+    customer: "CustomerSnapshot | None" = None
 
 
 class EventMessage(BaseModel):
@@ -73,6 +74,8 @@ class InboundEvent(BaseModel):
     conversation: ConversationSnapshot | None = None
     # Present on message events.
     message: EventMessage | None = None
+    # Present on contact events.
+    customer: "CustomerSnapshot | None" = None
 
 
 # --- What the API returns ----------------------------------------------------
@@ -91,6 +94,7 @@ class ConversationOut(BaseModel):
     updated_at: datetime
     ai_enabled: bool = True
     ai_paused_reason: str | None = None
+    customer_id: UUID | None = None
 
 
 class MessageOut(BaseModel):
@@ -217,3 +221,71 @@ class AIReplyList(BaseModel):
 
 class ConversationAIIn(BaseModel):
     enabled: bool
+
+
+# --- Customers ------------------------------------------------------------------
+
+
+class CustomerSnapshot(BaseModel):
+    """A customer (contact) as an adapter reports it, before NEXUS stores it."""
+
+    external_id: str
+    name: str = "Unknown contact"
+    email: str | None = None
+    phone: str | None = None
+    avatar_url: str | None = None
+    identifier: str | None = None
+    city: str | None = None
+    country: str | None = None
+    company: str | None = None
+    description: str | None = None
+    social_profiles: dict[str, str] = Field(default_factory=dict)
+    custom_attributes: dict = Field(default_factory=dict)
+    channels: list[str] = Field(default_factory=list)
+    blocked: bool = False
+    first_seen_at: datetime | None = None
+    last_seen_at: datetime | None = None
+
+
+class CustomerSummary(BaseModel):
+    id: UUID
+    source: str
+    external_id: str
+    name: str
+    email: str | None
+    phone: str | None
+    avatar_url: str | None
+    city: str | None
+    country: str | None
+    company: str | None
+    channels: list[str]
+    conversation_count: int
+    open_conversations: int
+    last_message_at: datetime | None
+    last_message_preview: str | None
+    first_seen_at: datetime | None
+
+
+class CustomerList(BaseModel):
+    items: list[CustomerSummary]
+    total: int
+
+
+class CustomerDetail(CustomerSummary):
+    identifier: str | None
+    description: str | None
+    social_profiles: dict[str, str]
+    custom_attributes: dict
+    blocked: bool
+    updated_at: datetime
+    conversations: list[ConversationOut]
+
+
+class CustomerSyncResult(BaseModel):
+    customers: int
+    conversations: int
+
+
+# Forward references: snapshots mention CustomerSnapshot before it is defined.
+ConversationSnapshot.model_rebuild()
+InboundEvent.model_rebuild()

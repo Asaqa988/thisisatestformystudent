@@ -19,6 +19,7 @@ from app.schemas import (
     MessageOut,
 )
 from app.services.ai_agent import ai_message_ids
+from app.services.customers import upsert_customer
 
 UNKNOWN_CONTACT = "Unknown contact"
 
@@ -46,6 +47,7 @@ def to_out(row: Conversation) -> ConversationOut:
         updated_at=row.updated_at,
         ai_enabled=row.ai_enabled,
         ai_paused_reason=row.ai_paused_reason,
+        customer_id=row.customer_id,
     )
 
 
@@ -114,6 +116,11 @@ def upsert_conversation(db: Session, source: str, snapshot: ConversationSnapshot
         row.last_message_preview = last.preview
         row.last_message_direction = last.direction
         row.last_message_at = last.at
+
+    # Link the conversation to the customer it is with.
+    if snapshot.customer is not None:
+        customer = upsert_customer(db, source, snapshot.customer, channel=snapshot.channel)
+        row.customer_id = customer.id
 
     row.updated_at = datetime.now(tz=UTC)
     return row

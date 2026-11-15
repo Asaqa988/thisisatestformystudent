@@ -16,6 +16,7 @@ from app.schemas import (
     Author,
     Contact,
     ConversationSnapshot,
+    CustomerSnapshot,
     EventMessage,
     InboundEvent,
     LastMessage,
@@ -64,6 +65,7 @@ CONVERSATION_EVENTS = {
     "conversation_status_changed",
 }
 MESSAGE_EVENTS = {"message_created", "message_updated"}
+CONTACT_EVENTS = {"contact_created", "contact_updated"}
 
 
 # --- Small converters --------------------------------------------------------
@@ -172,6 +174,50 @@ def to_conversation(raw: dict, inbox_names: dict[int, str] | None = None) -> Con
         contact=to_contact(meta.get("sender")),
         last_message=to_last_message(last),
         unread_count=int(raw.get("unread_count") or 0),
+        customer=to_customer(meta.get("sender")),
+    )
+
+
+# --- Customers (Chatwoot contacts) --------------------------------------------
+
+
+def to_customer(raw: dict | None, contact_inboxes: list | None = None) -> CustomerSnapshot | None:
+    """Normalize a Chatwoot contact.
+
+    Works for a conversation's meta.sender, contact webhooks, and GET /contacts/{id}.
+    """
+    if not raw or raw.get("id") is None:
+        return None
+    if raw.get("type") not in (None, "contact"):
+        return None  # an agent, not a customer
+
+    extra = raw.get("additional_attributes") or {}
+    social = {
+        key: str(value) for key, value in (extra.get("social_profiles") or {}).items() if value
+    }
+    channels = []
+    for item in contact_inboxes or raw.get("contact_inboxes") or []:
+        channel = to_channel((item.get("inbox") or {}).get("channel_type"))
+        if channel != "unknown" and channel not in channels:
+            channels.append(channel)
+
+    return CustomerSnapshot(
+        external_id=str(raw["id"]),
+        name=raw.get("name") or "Unknown contact",
+        email=raw.get("email") or None,
+        phone=raw.get("phone_number") or None,
+        avatar_url=raw.get("thumbnail") or raw.get("avatar") or None,
+        identifier=raw.get("identifier") or None,
+        city=extra.get("city") or None,
+        country=extra.get("country") or None,
+        company=extra.get("company_name") or None,
+        description=extra.get("description") or None,
+        social_profiles=social,
+        custom_attributes=raw.get("custom_attributes") or {},
+        channels=channels,
+        blocked=bool(raw.get("blocked")),
+        first_seen_at=to_datetime(raw["created_at"]) if raw.get("created_at") else None,
+        last_seen_at=to_datetime(raw["last_activity_at"]) if raw.get("last_activity_at") else None,
     )
 
 
@@ -188,6 +234,15 @@ def to_event(payload: dict) -> InboundEvent:
         return _message_event(event_type, account_id, payload)
     if event_type in CONVERSATION_EVENTS:
         return _conversation_event(event_type, account_id, payload)
+    if event_type in CONTACT_EVENTS:
+        customer = to_customer({**payload, "type": "contact"})
+        verb = "New contact" if event_type == "contact_created" else "Contact updated"
+        return InboundEvent(
+            event_type=event_type,
+            external_account_id=account_id,
+            summary=f"{verb}: {customer.name if customer else 'unknown'}"[:300],
+            customer=customer,
+        )
 
     conversation = payload.get("conversation") or {}
     return InboundEvent(

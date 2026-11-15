@@ -13,6 +13,7 @@ from app.integrations.base import MessagingAdapter
 from app.models import Conversation, WebhookEvent
 from app.schemas import ConversationCounts, EventCounts, WebhookAck
 from app.services.ai_agent import is_ai_message
+from app.services.customers import upsert_customer
 from app.services.inbox import upsert_conversation
 
 
@@ -62,7 +63,7 @@ def ingest_webhook(
     """
     event = adapter.parse_event(payload)
     key = dedupe_key_for(delivery_id, raw_body)
-    acted_on = event.conversation is not None
+    acted_on = event.conversation is not None or event.customer is not None
 
     inserted_id = db.execute(
         pg_insert(WebhookEvent)
@@ -100,6 +101,9 @@ def ingest_webhook(
     if event.conversation is not None:
         conversation = upsert_conversation(db, adapter.key, event.conversation)
         trigger = _react_to_message(db, conversation, event)
+    elif event.customer is not None:
+        # contact_created / contact_updated: a name, phone or email changed.
+        upsert_customer(db, adapter.key, event.customer)
 
     # One commit: the event row and the conversation change succeed or fail together.
     db.commit()

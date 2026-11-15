@@ -61,6 +61,17 @@ class ChatwootClient:
             "POST", self._account(f"/conversations/{conversation_id}/messages"), json=body
         )
 
+    def get_contact(self, contact_id: str) -> dict:
+        return self._request("GET", self._account(f"/contacts/{contact_id}")).get("payload") or {}
+
+    def update_webhook(self, webhook_id: int, url: str, subscriptions: list[str]) -> dict:
+        data = self._request(
+            "PATCH",
+            self._account(f"/webhooks/{webhook_id}"),
+            json={"url": url, "subscriptions": subscriptions},
+        )
+        return (data.get("payload") or {}).get("webhook", data)
+
     def list_webhooks(self) -> list[dict]:
         data = self._request("GET", self._account("/webhooks"))
         return (data.get("payload") or {}).get("webhooks", [])

@@ -10,6 +10,8 @@ import type {
   AIReply,
   AISettings,
   Conversation,
+  CustomerDetail,
+  CustomerList,
   DashboardSummary,
   IntegrationStatus,
   ItemList,
@@ -74,4 +76,23 @@ export function useAIActivity(limit = 30) {
     refreshInterval: LIST_REFRESH_MS,
     ...retry,
   });
+}
+
+export function useCustomers(query: string, channel: string | null) {
+  const params = new URLSearchParams({ limit: "200" });
+  if (query.trim()) params.set("q", query.trim());
+  if (channel) params.set("channel", channel);
+  return useSWR<CustomerList, ApiError>(`/api/v1/customers?${params}`, fetcher, {
+    refreshInterval: SLOW_REFRESH_MS,
+    keepPreviousData: true,
+    ...retry,
+  });
+}
+
+export function useCustomer(customerId: string | null) {
+  return useSWR<CustomerDetail, ApiError>(
+    customerId ? `/api/v1/customers/${customerId}` : null,
+    fetcher,
+    { refreshInterval: SLOW_REFRESH_MS, ...retry },
+  );
 }

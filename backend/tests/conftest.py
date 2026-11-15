@@ -61,7 +61,7 @@ def _clean_tables():
     with engine.begin() as connection:
         connection.execute(
             text(
-                "TRUNCATE webhook_events, ai_replies, conversations,"
+                "TRUNCATE webhook_events, ai_replies, conversations, customers,"
                 " knowledge_articles, ai_settings"
             )
         )

@@ -31,6 +31,7 @@ export interface Conversation {
   updated_at: string;
   ai_enabled: boolean;
   ai_paused_reason: string | null;
+  customer_id: string | null;
 }
 
 export interface Message {
@@ -112,4 +113,38 @@ export interface AIReply {
   input_tokens: number;
   output_tokens: number;
   created_at: string;
+}
+
+export interface CustomerSummary {
+  id: string;
+  source: string;
+  external_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  city: string | null;
+  country: string | null;
+  company: string | null;
+  channels: string[];
+  conversation_count: number;
+  open_conversations: number;
+  last_message_at: string | null;
+  last_message_preview: string | null;
+  first_seen_at: string | null;
+}
+
+export interface CustomerList {
+  items: CustomerSummary[];
+  total: number;
+}
+
+export interface CustomerDetail extends CustomerSummary {
+  identifier: string | null;
+  description: string | null;
+  social_profiles: Record<string, string>;
+  custom_attributes: Record<string, unknown>;
+  blocked: boolean;
+  updated_at: string;
+  conversations: Conversation[];
 }

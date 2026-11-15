@@ -8,7 +8,13 @@ and implement the same six methods.
 from collections.abc import Mapping
 from typing import Protocol
 
-from app.schemas import ConversationSnapshot, InboundEvent, IntegrationStatus, MessageOut
+from app.schemas import (
+    ConversationSnapshot,
+    CustomerSnapshot,
+    InboundEvent,
+    IntegrationStatus,
+    MessageOut,
+)
 
 
 class MessagingAdapter(Protocol):
@@ -25,6 +31,9 @@ class MessagingAdapter(Protocol):
 
     def send_message(self, external_conversation_id: str, content: str) -> MessageOut:
         """Send a reply to the customer and return the message that was created."""
+
+    def get_customer(self, external_customer_id: str) -> CustomerSnapshot | None:
+        """Fetch one customer's full details, including every channel they used."""
 
     def add_private_note(self, external_conversation_id: str, content: str) -> None:
         """Leave a note only agents can see, never the customer."""

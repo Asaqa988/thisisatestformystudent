@@ -30,7 +30,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/", label: "Dashboard", icon: LayoutDashboard },
       { href: "/inbox", label: "Unified Inbox", icon: Inbox },
-      { href: "/customers", label: "Customers", icon: Users, upcoming: true },
+      { href: "/customers", label: "Customers", icon: Users },
     ],
   },
   {

@@ -2,6 +2,14 @@
 
 from app.models.ai import AIReply, AISettings, KnowledgeArticle
 from app.models.conversation import Conversation
+from app.models.customer import Customer
 from app.models.webhook_event import WebhookEvent
 
-__all__ = ["AIReply", "AISettings", "Conversation", "KnowledgeArticle", "WebhookEvent"]
+__all__ = [
+    "AIReply",
+    "AISettings",
+    "Conversation",
+    "Customer",
+    "KnowledgeArticle",
+    "WebhookEvent",
+]

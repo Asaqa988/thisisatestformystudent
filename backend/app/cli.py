@@ -34,6 +34,8 @@ SUBSCRIPTIONS = [
     "conversation_status_changed",
     "message_created",
     "message_updated",
+    "contact_created",
+    "contact_updated",
 ]
 
 # The backend running in this same container. Hosting platforms choose the port.
@@ -60,7 +62,12 @@ def chatwoot_setup(_: argparse.Namespace) -> None:
     url = settings.nexus_webhook_url
     webhook = next((w for w in client.list_webhooks() if w.get("url") == url), None)
     if webhook:
-        print(f"Webhook to {url} already exists (id {webhook['id']})")
+        missing = sorted(set(SUBSCRIPTIONS) - set(webhook.get("subscriptions") or []))
+        if missing:
+            webhook = client.update_webhook(webhook["id"], url, SUBSCRIPTIONS)
+            print(f"Webhook to {url} now also sends: {', '.join(missing)}")
+        else:
+            print(f"Webhook to {url} already exists (id {webhook['id']})")
     else:
         webhook = client.create_webhook(url, SUBSCRIPTIONS)
         print(f"Registered webhook to {url} (id {webhook['id']})")

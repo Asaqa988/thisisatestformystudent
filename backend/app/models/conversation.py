@@ -8,7 +8,16 @@ The messages themselves are fetched from the source when a thread is opened.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -34,6 +43,10 @@ class Conversation(Base):
     contact_name: Mapped[str] = mapped_column(String(200), default="Unknown contact")
     contact_email: Mapped[str | None] = mapped_column(String(320))
     contact_avatar_url: Mapped[str | None] = mapped_column(Text)
+    # The customer this conversation is with (see models/customer.py).
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("customers.id", ondelete="SET NULL"), index=True
+    )
 
     last_message_preview: Mapped[str | None] = mapped_column(String(280))
     last_message_direction: Mapped[str | None] = mapped_column(String(16))

@@ -41,6 +41,9 @@ export interface Message {
   content: string;
   private: boolean;
   sent_at: string;
+  /** Outgoing messages: sent, delivered, read or failed (as the channel reports it). */
+  delivery_status?: string | null;
+  delivery_error?: string | null;
 }
 
 export interface IntegrationStatus {
@@ -163,7 +166,14 @@ export interface AutomationStep {
 export interface RunOutput {
   step_id: string;
   tool: string;
-  kind: "customers" | "conversations" | "file" | "summary" | "action" | "action_result";
+  kind:
+    | "customers"
+    | "conversations"
+    | "file"
+    | "summary"
+    | "action"
+    | "action_result"
+    | "delivery_failure";
   count: number;
   summary: string;
   file_id?: string;
@@ -180,7 +190,16 @@ export interface PendingAction {
   status?: string;
   enabled?: boolean;
   target_count: number;
-  targets: { conversation_id: string; name: string; channel: string; status: string }[];
+  targets: {
+    conversation_id: string;
+    name: string;
+    channel: string;
+    status: string;
+    result?: "sent" | "done" | "failed" | "skipped" | "not_delivered";
+    error?: string;
+  }[];
+  /** Left out before approval, e.g. outside Meta's 24-hour reply window. */
+  skipped?: { conversation_id: string; name: string; channel: string; reason: string }[];
 }
 
 export interface AutomationRun {

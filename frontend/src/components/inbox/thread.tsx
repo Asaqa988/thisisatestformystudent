@@ -167,6 +167,7 @@ function MessageItem({ message }: { message: Message }) {
   const outbound = message.direction === "outbound";
   const pending = message.id.startsWith("pending-");
   const byAI = message.author.type === "bot";
+  const failed = message.delivery_status === "failed";
 
   return (
     <div className={cn("my-1 flex flex-col", outbound ? "items-end" : "items-start")}>
@@ -181,6 +182,7 @@ function MessageItem({ message }: { message: Message }) {
                 ? "rounded-br-md bg-primary text-primary-foreground"
                 : "rounded-bl-md border bg-card",
           pending && "opacity-60",
+          failed && "ring-2 ring-destructive/60",
         )}
       >
         {message.private && (
@@ -196,6 +198,11 @@ function MessageItem({ message }: { message: Message }) {
         {byAI && <Sparkles className="size-3 text-brand" />}
         {pending ? "Sending…" : `${message.author.name} · ${clockTime(message.sent_at)}`}
       </span>
+      {failed && (
+        <span dir="auto" className="mt-0.5 max-w-[85%] px-1 text-right text-[11px] font-medium text-destructive sm:max-w-[75%]">
+          Not delivered{message.delivery_error ? `: ${message.delivery_error}` : ""}
+        </span>
+      )}
     </div>
   );
 }

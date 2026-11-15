@@ -99,7 +99,10 @@ def list_tools():
     "/automations", response_model=AutomationDetailOut, status_code=status.HTTP_202_ACCEPTED
 )
 def create_automation(
-    data: AutomationIn, background: BackgroundTasks, db: Session = Depends(get_db)
+    data: AutomationIn,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+    adapter: MessagingAdapter = Depends(get_adapter),
 ):
     """Save the request and let the crew build it in the background. Poll GET /automations/{id}."""
     automation = Automation(
@@ -111,7 +114,8 @@ def create_automation(
     )
     db.add(automation)
     db.commit()
-    background.add_task(service.build_and_run, automation.id)
+    # The same connection this request uses, so the build sees the same channel.
+    background.add_task(service.build_and_run, automation.id, adapter=adapter)
     return service.automation_out(db, automation, with_runs=True)
 
 
@@ -127,12 +131,16 @@ def get_automation(automation_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/automations/{automation_id}/run", response_model=RunOut)
-def run_automation(automation_id: uuid.UUID, db: Session = Depends(get_db)):
+def run_automation(
+    automation_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    adapter: MessagingAdapter = Depends(get_adapter),
+):
     """Run the saved plan again on fresh data. No AI is involved, so it is instant and free."""
     automation = _get(db, automation_id)
     if automation.status != "ready":
         raise NotReady("This automation has no plan to run.")
-    return service.run_out(db, executor.start_run(db, automation), automation.title)
+    return service.run_out(db, executor.start_run(db, automation, adapter), automation.title)
 
 
 @router.delete("/automations/{automation_id}", status_code=status.HTTP_204_NO_CONTENT)

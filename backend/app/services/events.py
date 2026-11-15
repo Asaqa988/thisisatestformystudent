@@ -9,9 +9,9 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.automations.executor import is_automation_message
+from app.automations.executor import is_automation_message, record_delivery_failure
 from app.integrations.base import MessagingAdapter
-from app.models import Conversation, WebhookEvent
+from app.models import AIReply, Conversation, WebhookEvent
 from app.schemas import ConversationCounts, EventCounts, WebhookAck
 from app.services.ai_agent import is_ai_message
 from app.services.customers import upsert_customer
@@ -112,6 +112,22 @@ def ingest_webhook(
     return IngestResult(ack, trigger)
 
 
+def _record_delivery_failure(db: Session, conversation: Conversation, message) -> None:
+    """The channel refused a message after Chatwoot accepted it (expired token,
+    Meta's 24-hour window, blocked user...). Mark it where it came from."""
+    if record_delivery_failure(db, message.external_id, message.error):
+        return
+    reply = db.scalars(
+        select(AIReply).where(
+            AIReply.conversation_id == conversation.id,
+            AIReply.external_message_id == message.external_id,
+        )
+    ).first()
+    if reply is not None and reply.status != "error":
+        reply.status = "error"
+        reply.reason = f"Not delivered: {message.error}"[:500]
+
+
 def _react_to_message(db: Session, conversation: Conversation, event) -> AITrigger | None:
     """Decide what a new message means for the AI agent.
 
@@ -120,6 +136,9 @@ def _react_to_message(db: Session, conversation: Conversation, event) -> AITrigg
       conversation, so it never talks over a person.
     """
     message = event.message
+    if message is not None and message.error and message.direction == "outbound":
+        _record_delivery_failure(db, conversation, message)
+        return None
     if event.event_type != "message_created" or message is None or message.private:
         return None
 

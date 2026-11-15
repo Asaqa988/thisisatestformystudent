@@ -106,6 +106,18 @@ class ChatwootAdapter:
             {**self.client.get_contact(external_customer_id), "type": "contact"}
         )
 
+    def reply_windows(self) -> dict[str, bool]:
+        """Which conversations accept a message from the business right now.
+
+        Chatwoot applies each channel's rule (Meta: 24 hours after the customer's
+        last message). Conversations it does not mention are left out.
+        """
+        return {
+            snapshot.external_id: snapshot.can_reply
+            for snapshot in self.list_conversations()
+            if snapshot.can_reply is not None
+        }
+
     def set_conversation_status(self, external_conversation_id: str, status: str) -> None:
         self.client.set_conversation_status(external_conversation_id, status)
 

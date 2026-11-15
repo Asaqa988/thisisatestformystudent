@@ -394,3 +394,108 @@ def test_strict_schema_keeps_a_field_named_title():
     assert "title" in schema["properties"]
     assert schema["required"] == ["title", "summary", "steps", "unsupported_reason", "review_notes"]
     assert schema["properties"]["steps"]["items"]["additionalProperties"] is False
+
+
+# --- Delivery: reply windows and failures reported after sending ---------------------------
+
+
+def _window(fake_chatwoot, **can_reply_by_conversation):
+    """Make the fake Chatwoot report which conversations accept a message now."""
+    conversations = []
+    for conversation_id, can_reply in can_reply_by_conversation.items():
+        raw = samples.rest_conversation(conversation_id=int(conversation_id.removeprefix("c")))
+        raw["can_reply"] = can_reply
+        conversations.append(raw)
+    fake_chatwoot.conversations = conversations
+
+
+def test_customers_outside_the_reply_window_are_left_out_before_approval(
+    client, builder, fake_chatwoot
+):
+    seed_customers(client)  # conversations 40 and 41
+    _window(fake_chatwoot, c40=True, c41=False)
+    builder(MESSAGE_PLAN)
+
+    [action] = build(client)["runs"][0]["pending_actions"]
+
+    assert action["target_count"] == 1
+    assert [t["name"] for t in action["targets"]] == ["Customer 1"]
+    assert [s["name"] for s in action["skipped"]] == ["Customer 2"]
+    assert "24 hours" in action["skipped"][0]["reason"]
+
+
+def test_nobody_reachable_means_nothing_to_approve(client, builder, fake_chatwoot):
+    seed_customers(client, count=1)
+    _window(fake_chatwoot, c40=False)
+    builder(MESSAGE_PLAN)
+
+    run = build(client)["runs"][0]
+
+    assert run["status"] == "succeeded"
+    assert run["pending_actions"][0]["target_count"] == 0
+    assert posted_messages(fake_chatwoot) == []
+
+
+def test_the_window_is_checked_again_at_approval(client, builder, fake_chatwoot):
+    seed_customers(client, count=1)
+    _window(fake_chatwoot, c40=True)
+    builder(MESSAGE_PLAN)
+    run = build(client)["runs"][0]
+    _window(fake_chatwoot, c40=False)  # the customer's 24 hours ran out while waiting
+
+    result = client.post(f"/api/v1/automation-runs/{run['id']}/approve").json()
+
+    assert result["status"] == "failed"
+    assert "24 hours" in result["error"]
+    assert posted_messages(fake_chatwoot) == []
+
+
+def _failure_webhook(message_id, conversation_id, error):
+    payload = samples.webhook_message_created(
+        message_id=message_id,
+        conversation_id=conversation_id,
+        message_type="outgoing",
+        content="We are open on Friday!",
+    )
+    payload["event"] = "message_updated"
+    payload["content_attributes"] = {"external_error": error}
+    return payload
+
+
+def test_a_delivery_failure_reported_later_marks_the_run(client, builder, fake_chatwoot):
+    seed_customers(client, count=1)
+    builder(MESSAGE_PLAN)
+    run = build(client)["runs"][0]
+    approved = client.post(f"/api/v1/automation-runs/{run['id']}/approve").json()
+    assert approved["status"] == "succeeded"
+    assert approved["pending_actions"][0]["targets"][0]["message_id"] == "900"
+
+    failure = _failure_webhook(900, 40, "Authentication Error")
+    client.post(WEBHOOK_PATH, **signed(failure, delivery="fail-900"))
+    client.post(WEBHOOK_PATH, **signed(failure, delivery="fail-900-again"))  # repeated update
+
+    after = client.get(f"/api/v1/automations/{run['automation_id']}").json()["runs"][0]
+    assert after["status"] == "failed"
+    assert after["error"] == "Not delivered to Customer 1: Authentication Error"
+    assert [o["summary"] for o in after["outputs"] if o["kind"] == "delivery_failure"] == [
+        "Not delivered to Customer 1: Authentication Error"
+    ]
+
+
+def test_messages_show_their_delivery_status_and_error():
+    from app.integrations.chatwoot import mapper
+
+    failed = mapper.to_message(
+        {
+            **samples.rest_message(message_id=68, message_type=1),
+            "status": "failed",
+            "content_attributes": {
+                "external_error": "10 - This message is sent outside of allowed window."
+            },
+        }
+    )
+    incoming = mapper.to_message({**samples.rest_message(), "status": "sent"})
+
+    assert failed.delivery_status == "failed"
+    assert failed.delivery_error.startswith("10 - This message is sent outside")
+    assert incoming.delivery_status is None  # only outgoing messages carry one

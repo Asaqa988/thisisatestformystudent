@@ -35,6 +35,9 @@ class MessagingAdapter(Protocol):
     def get_customer(self, external_customer_id: str) -> CustomerSnapshot | None:
         """Fetch one customer's full details, including every channel they used."""
 
+    def reply_windows(self) -> dict[str, bool]:
+        """external conversation id -> whether the business may write to it now."""
+
     def set_conversation_status(self, external_conversation_id: str, status: str) -> None:
         """Open or resolve a conversation."""
 

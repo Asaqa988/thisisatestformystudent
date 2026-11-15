@@ -435,3 +435,18 @@ def test_history_merges_turns_and_drops_notes():
         {"role": "assistant", "content": "450 JOD."},
         {"role": "user", "content": "[The customer sent an attachment or a sticker]"},
     ]
+
+
+def test_an_ai_reply_that_was_not_delivered_is_marked(client, llm, ai_on, customer_last):
+    customer_writes(client)  # the AI replies; the fake gives the reply id 900
+    failure = samples.webhook_message_created(
+        message_id=900, message_type="outgoing", content="Our monthly plan is 450 JOD."
+    )
+    failure["event"] = "message_updated"
+    failure["content_attributes"] = {"external_error": "Authentication Error"}
+
+    client.post(WEBHOOK_PATH, **signed(failure, delivery="ai-fail"))
+
+    [reply] = replies()
+    assert reply.status == "error"
+    assert reply.reason == "Not delivered: Authentication Error"

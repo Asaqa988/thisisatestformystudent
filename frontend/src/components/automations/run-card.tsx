@@ -56,10 +56,16 @@ export function RunCard({
               <span
                 className={cn(
                   "mt-1.5 size-1.5 shrink-0 rounded-full",
-                  output.kind === "action" ? "bg-attention" : "bg-positive",
+                  output.kind === "delivery_failure"
+                    ? "bg-destructive"
+                    : output.kind === "action"
+                      ? "bg-attention"
+                      : "bg-positive",
                 )}
               />
-              <span>{output.summary}</span>
+              <span dir="auto" className={cn(output.kind === "delivery_failure" && "text-destructive")}>
+                {output.summary}
+              </span>
             </li>
           ))}
         </ul>
@@ -163,6 +169,17 @@ function ActionPreview({ action }: { action: PendingAction }) {
         ))}
         {extra > 0 && <li className="px-1 text-[11px] text-muted-foreground">and {extra} more</li>}
       </ul>
+      {action.skipped && action.skipped.length > 0 && (
+        <div className="mt-2.5 border-t pt-2 text-[12px] text-muted-foreground">
+          <p>
+            Left out ({action.skipped.length}): Meta only allows replies within 24 hours of the customer&apos;s last
+            message, so these would not be delivered.
+          </p>
+          <p dir="auto" className="mt-1">
+            {action.skipped.map((s) => s.name).join(" · ")}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

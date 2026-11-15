@@ -138,7 +138,15 @@ def to_message(raw: dict) -> MessageOut:
         content=raw.get("content") or "",
         private=bool(raw.get("private")),
         sent_at=to_datetime(raw.get("created_at")),
+        delivery_status=raw.get("status") if direction == "outbound" else None,
+        delivery_error=delivery_error(raw),
     )
+
+
+def delivery_error(raw: dict) -> str | None:
+    """The channel's reason for not delivering a message, e.g. Meta's 24-hour rule."""
+    error = (raw.get("content_attributes") or {}).get("external_error")
+    return str(error)[:300] if error else None
 
 
 def to_last_message(raw: dict | None) -> LastMessage | None:
@@ -175,6 +183,7 @@ def to_conversation(raw: dict, inbox_names: dict[int, str] | None = None) -> Con
         last_message=to_last_message(last),
         unread_count=int(raw.get("unread_count") or 0),
         customer=to_customer(meta.get("sender")),
+        can_reply=raw.get("can_reply") if isinstance(raw.get("can_reply"), bool) else None,
     )
 
 
@@ -282,6 +291,7 @@ def _message_event(event_type: str, account_id: str | None, payload: dict) -> In
             author_type=author.type,
             private=bool(payload.get("private")),
             content=payload.get("content") or "",
+            error=delivery_error(payload),
         )
 
     return InboundEvent(

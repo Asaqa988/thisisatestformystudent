@@ -51,6 +51,8 @@ class ConversationSnapshot(BaseModel):
     last_message: LastMessage | None = None
     unread_count: int = 0
     customer: "CustomerSnapshot | None" = None
+    # Whether the channel lets the business write now (Meta's 24-hour window).
+    can_reply: bool | None = None
 
 
 class EventMessage(BaseModel):
@@ -61,6 +63,8 @@ class EventMessage(BaseModel):
     author_type: AuthorType
     private: bool = False
     content: str = ""
+    # Why the channel could not deliver it, when it could not.
+    error: str | None = None
 
 
 class InboundEvent(BaseModel):
@@ -104,6 +108,9 @@ class MessageOut(BaseModel):
     content: str
     private: bool = False
     sent_at: datetime
+    # Set for outgoing messages once the channel answers: sent, delivered, read or failed.
+    delivery_status: str | None = None
+    delivery_error: str | None = None
 
 
 class ConversationList(BaseModel):

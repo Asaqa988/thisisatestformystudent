@@ -13,6 +13,7 @@ from app.automations.executor import PlanError, Step, describe_step, start_run, 
 from app.automations.tools import TOOLS
 from app.core.config import Settings, get_settings
 from app.core.db import SessionLocal
+from app.integrations.base import MessagingAdapter
 from app.models import Automation, AutomationFile, AutomationRun
 
 log = logging.getLogger("nexus.automations")
@@ -21,6 +22,7 @@ log = logging.getLogger("nexus.automations")
 def build_and_run(
     automation_id: uuid.UUID,
     *,
+    adapter: MessagingAdapter | None = None,
     config: Settings | None = None,
     builder: Callable | None = None,
 ) -> None:
@@ -32,7 +34,7 @@ def build_and_run(
         if automation is None:
             return
         try:
-            _build(db, automation, config, builder)
+            _build(db, automation, config, builder, adapter)
         except Exception:  # noqa: BLE001 - background task: record, never crash
             log.exception("Building automation %s failed", automation_id)
             db.rollback()
@@ -43,7 +45,13 @@ def build_and_run(
             db.commit()
 
 
-def _build(db: Session, automation: Automation, config: Settings, builder: Callable) -> None:
+def _build(
+    db: Session,
+    automation: Automation,
+    config: Settings,
+    builder: Callable,
+    adapter: MessagingAdapter | None,
+) -> None:
     if not config.anthropic_api_key:
         return _fail(db, automation, "No ANTHROPIC_API_KEY is configured on the server.")
 
@@ -83,7 +91,7 @@ def _build(db: Session, automation: Automation, config: Settings, builder: Calla
     automation.error = None
     automation.updated_at = datetime.now(tz=UTC)
     db.commit()
-    start_run(db, automation)
+    start_run(db, automation, adapter)
 
 
 def _fail(db: Session, automation: Automation, reason: str) -> None:

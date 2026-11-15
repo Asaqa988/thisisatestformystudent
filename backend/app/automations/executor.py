@@ -23,6 +23,10 @@ from app.integrations.base import MessagingAdapter
 from app.models import Automation, AutomationFile, AutomationRun, Conversation
 
 MAX_STEPS = 10
+WINDOW_REASON = (
+    "outside the channel's reply window (Meta allows replies only within 24 hours "
+    "of the customer's last message)"
+)
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
@@ -93,7 +97,9 @@ def describe_step(step: Step) -> str:
 # --- Running ----------------------------------------------------------------------------
 
 
-def start_run(db: Session, automation: Automation) -> AutomationRun:
+def start_run(
+    db: Session, automation: Automation, adapter: MessagingAdapter | None = None
+) -> AutomationRun:
     """Run the read phase now; hold any actions for approval."""
     run = AutomationRun(id=uuid.uuid4(), automation_id=automation.id, status="running")
     db.add(run)
@@ -135,7 +141,7 @@ def start_run(db: Session, automation: Automation) -> AutomationRun:
                     output.update(file_id=str(stored.id), filename=filename, size=len(content))
                 outputs.append(output)
             else:
-                action = _prepare_action(db, step, results)
+                action = _prepare_action(db, step, results, adapter)
                 pending.append(action)
                 outputs.append(
                     {
@@ -164,7 +170,12 @@ def start_run(db: Session, automation: Automation) -> AutomationRun:
     return run
 
 
-def _prepare_action(db: Session, step: Step, results: dict[str, StepResult]) -> dict:
+def _prepare_action(
+    db: Session,
+    step: Step,
+    results: dict[str, StepResult],
+    adapter: MessagingAdapter | None = None,
+) -> dict:
     """Work out exactly which conversations an action step would touch."""
     source = results[step.params.source]
     if source.kind == "customers":
@@ -173,6 +184,20 @@ def _prepare_action(db: Session, step: Step, results: dict[str, StepResult]) -> 
         ids = [uuid.UUID(i) for i in source.ids or []]
         found = {c.id: c for c in db.scalars(select(Conversation).where(Conversation.id.in_(ids)))}
         conversations = [found[i] for i in ids if i in found]
+
+    # Customers can only be written to inside the channel's reply window
+    # (Meta: 24 hours after their last message). Leave the others out now and
+    # say so, instead of sending messages that are certain to fail.
+    skipped: list[dict] = []
+    if step.tool == "send_message" and adapter is not None:
+        windows = _reply_windows(adapter)
+        reachable = []
+        for conversation in conversations:
+            if windows.get(conversation.external_id) is False:
+                skipped.append(_target(conversation) | {"reason": WINDOW_REASON})
+            else:
+                reachable.append(conversation)
+        conversations = reachable
 
     if step.tool == "send_message" and len(conversations) > MAX_RECIPIENTS:
         raise PlanError(
@@ -187,16 +212,27 @@ def _prepare_action(db: Session, step: Step, results: dict[str, StepResult]) -> 
         "label": TOOLS[step.tool].label,
         **params,  # text, status or enabled, so the approver sees exactly what will happen
         "target_count": len(conversations),
-        "targets": [
-            {
-                "conversation_id": str(c.id),
-                "name": c.contact_name,
-                "channel": c.channel,
-                "status": c.status,
-            }
-            for c in conversations
-        ],
+        "targets": [_target(c) for c in conversations],
+        "skipped": skipped,
     }
+
+
+def _target(conversation: Conversation) -> dict:
+    return {
+        "conversation_id": str(conversation.id),
+        "name": conversation.contact_name,
+        "channel": conversation.channel,
+        "status": conversation.status,
+    }
+
+
+def _reply_windows(adapter: MessagingAdapter) -> dict[str, bool]:
+    """Ask the channel which conversations accept a message now. If it cannot say,
+    assume they all do: the send itself will then report what failed."""
+    try:
+        return adapter.reply_windows()
+    except AppError:
+        return {}
 
 
 def _latest_conversation_per_customer(db: Session, customer_ids: list[str]) -> list[Conversation]:
@@ -237,7 +273,10 @@ def approve_run(db: Session, adapter: MessagingAdapter, run_id: uuid.UUID) -> Au
     total = done = 0
     failures: list[str] = []
     outputs = _decided(run.outputs, "Approved")
-    for action in run.pending_actions:
+    actions = [dict(a, targets=[dict(t) for t in a["targets"]]) for a in run.pending_actions]
+    # The window may have closed while the run waited for approval.
+    windows = _reply_windows(adapter) if any(a["tool"] == "send_message" for a in actions) else {}
+    for action in actions:
         ok = 0
         for target in action["targets"]:
             total += 1
@@ -245,10 +284,18 @@ def approve_run(db: Session, adapter: MessagingAdapter, run_id: uuid.UUID) -> Au
             if conversation is None:
                 failures.append(f"{target['name']}: conversation no longer exists")
                 continue
+            if action["tool"] == "send_message" and windows.get(conversation.external_id) is False:
+                target["result"] = "skipped"
+                failures.append(f"{target['name']}: {WINDOW_REASON}")
+                continue
             try:
-                _perform(adapter, action, conversation)
+                message_id = _perform(adapter, action, conversation)
+                if message_id:
+                    target["message_id"] = message_id  # to match a later delivery failure
+                target["result"] = "sent" if message_id else "done"
                 ok += 1
             except AppError as error:
+                target["result"] = "failed"
                 failures.append(f"{target['name']}: {error.message}")
         done += ok
         db.commit()
@@ -263,6 +310,7 @@ def approve_run(db: Session, adapter: MessagingAdapter, run_id: uuid.UUID) -> Au
         )
 
     run.outputs = outputs
+    run.pending_actions = actions
     run.finished_at = datetime.now(tz=UTC)
     if failures:
         shown = "; ".join(failures[:10]) + (
@@ -274,10 +322,13 @@ def approve_run(db: Session, adapter: MessagingAdapter, run_id: uuid.UUID) -> Au
     return run
 
 
-def _perform(adapter: MessagingAdapter, action: dict, conversation: Conversation) -> None:
+def _perform(adapter: MessagingAdapter, action: dict, conversation: Conversation) -> str | None:
+    """Do one action for one conversation. Returns the message id when a message was sent."""
     tool = action["tool"]
+    message_id = None
     if tool == "send_message":
         sent = adapter.send_message(conversation.external_id, action["text"])
+        message_id = sent.id
         conversation.last_message_preview = " ".join(action["text"].split())[:140]
         conversation.last_message_direction = "outbound"
         conversation.last_message_at = sent.sent_at
@@ -292,6 +343,55 @@ def _perform(adapter: MessagingAdapter, action: dict, conversation: Conversation
             None if action["enabled"] else "Turned off by an automation."
         )
     conversation.updated_at = datetime.now(tz=UTC)
+    return message_id
+
+
+def record_delivery_failure(db: Session, external_message_id: str, error: str) -> bool:
+    """A message an automation sent was accepted, then the channel refused it.
+
+    Chatwoot reports this a moment after sending (a message_updated webhook with an
+    error). Mark it on the run, so "done" never hides a message nobody received.
+    Returns True when the message belonged to an automation run.
+    """
+    run = db.scalars(
+        select(AutomationRun)
+        .where(
+            AutomationRun.pending_actions.contains(
+                [{"targets": [{"message_id": external_message_id}]}]
+            )
+        )
+        .with_for_update()
+    ).first()
+    if run is None:
+        return False
+
+    actions = [dict(a, targets=[dict(t) for t in a["targets"]]) for a in run.pending_actions]
+    name = "a customer"
+    for action in actions:
+        for target in action["targets"]:
+            if target.get("message_id") == external_message_id:
+                if target.get("result") == "not_delivered":
+                    return True  # already recorded (a repeated update)
+                target["result"] = "not_delivered"
+                target["error"] = error
+                name = target["name"]
+    run.pending_actions = actions
+    run.outputs = [
+        *run.outputs,
+        {
+            "step_id": "delivery",
+            "tool": "send_message",
+            "kind": "delivery_failure",
+            "count": 1,
+            "summary": f"Not delivered to {name}: {error}",
+        },
+    ]
+    sent = [t for a in actions for t in a["targets"] if t.get("message_id")]
+    if sent and all(t.get("result") == "not_delivered" for t in sent):
+        run.status = "failed"
+    note = f"Not delivered to {name}: {error}"
+    run.error = f"{run.error}; {note}" if run.error else note
+    return True
 
 
 def reject_run(db: Session, run_id: uuid.UUID) -> AutomationRun:

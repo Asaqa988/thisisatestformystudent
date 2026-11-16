@@ -41,7 +41,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
       { href: "/automations", label: "Automations", icon: Workflow },
       { href: "/projects", label: "Projects", icon: FolderKanban, upcoming: true },
-      { href: "/campaigns", label: "Campaigns", icon: Megaphone, upcoming: true },
+      { href: "/campaigns", label: "Campaigns", icon: Megaphone },
       { href: "/approvals", label: "Approvals", icon: ShieldCheck },
     ],
   },

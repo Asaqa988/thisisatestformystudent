@@ -1,3 +1,5 @@
+import type { AdStoryboard } from "@/components/ads/motion";
+
 // The shapes the NEXUS backend returns. They are NEXUS shapes, not Chatwoot
 // shapes: the backend's adapter translates before anything reaches this file.
 // Keep this in step with docs/api-contracts.md.
@@ -237,4 +239,23 @@ export interface AutomationSummary {
 export interface AutomationDetail extends AutomationSummary {
   steps: AutomationStep[];
   runs: AutomationRun[];
+}
+
+// --- Ad videos -------------------------------------------------------------------
+
+export type AdStatus = "building" | "ready" | "failed";
+
+export interface AdVideo {
+  id: string;
+  brief: string | null;
+  language: string;
+  aspect: string;
+  title: string;
+  status: AdStatus;
+  error: string | null;
+  /** Empty until the ad is ready; then an AdStoryboard (see components/ads/motion.ts). */
+  storyboard: AdStoryboard | Record<string, never>;
+  input_tokens: number;
+  output_tokens: number;
+  created_at: string;
 }

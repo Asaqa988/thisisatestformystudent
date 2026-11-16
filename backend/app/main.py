@@ -8,6 +8,7 @@ Interactive API documentation is generated at /docs.
 from fastapi import Depends, FastAPI
 
 from app.api import (
+    ad_videos,
     ai,
     automations,
     conversations,
@@ -38,4 +39,5 @@ app.include_router(conversations.router, dependencies=[Depends(require_api_key)]
 app.include_router(customers.router, dependencies=[Depends(require_api_key)])
 app.include_router(knowledge.router, dependencies=[Depends(require_api_key)])
 app.include_router(ai.router, dependencies=[Depends(require_api_key)])
+app.include_router(ad_videos.router, dependencies=[Depends(require_api_key)])
 app.include_router(automations.router, dependencies=[Depends(require_api_key)])

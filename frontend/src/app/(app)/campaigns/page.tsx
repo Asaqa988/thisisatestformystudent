@@ -1,22 +1,15 @@
-import { Megaphone } from "lucide-react";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import { ComingSoon } from "@/components/coming-soon";
+import { AdsView } from "@/components/ads/ads-view";
 
 export const metadata: Metadata = { title: "Campaigns" };
 
 export default function CampaignsPage() {
+  // AdsView reads ?id=<ad id> from the URL, so it sits inside Suspense.
   return (
-    <ComingSoon
-      icon={Megaphone}
-      title="Campaigns"
-      summary="Plan a campaign once and let automations carry it across channels, with results reported back here."
-      poweredBy="Plane and Activepieces"
-      points={[
-        "Campaign plans linked to their tasks",
-        "Automated workflows triggered by NEXUS events",
-        "Drafts prepared by the marketing agent",
-      ]}
-    />
+    <Suspense fallback={<div className="h-full" />}>
+      <AdsView />
+    </Suspense>
   );
 }

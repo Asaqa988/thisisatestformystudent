@@ -156,6 +156,11 @@ A duplicate returns `200`, not an error, so Chatwoot stops retrying.
 `webhook_verification` is `hmac` when a secret is set and `disabled` when it is
 not. The token itself is never returned.
 
+### Ad videos
+
+`POST /api/v1/ad-videos`, `GET /api/v1/ad-videos`, `GET /api/v1/ad-videos/{id}`,
+`DELETE /api/v1/ad-videos/{id}`. See [ad-videos.md](ad-videos.md).
+
 ## What the adapter calls on Chatwoot
 
 Each of these was called against the running Chatwoot 4.19.1 while building the

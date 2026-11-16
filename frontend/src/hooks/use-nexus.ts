@@ -7,6 +7,7 @@ import useSWR from "swr";
 
 import { ApiError, fetcher } from "@/lib/api";
 import type {
+  AdVideo,
   AIReply,
   AISettings,
   AutomationDetail,
@@ -122,6 +123,14 @@ export function useAutomation(automationId: string | null) {
 export function useApprovals() {
   return useSWR<ItemList<AutomationRun>, ApiError>("/api/v1/approvals", fetcher, {
     refreshInterval: LIST_REFRESH_MS,
+    ...retry,
+  });
+}
+
+export function useAdVideos() {
+  return useSWR<ItemList<AdVideo>, ApiError>("/api/v1/ad-videos", fetcher, {
+    refreshInterval: (data) =>
+      data?.items.some((ad) => ad.status === "building") ? 2000 : SLOW_REFRESH_MS,
     ...retry,
   });
 }

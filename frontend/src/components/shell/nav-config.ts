@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   type LucideIcon,
   Megaphone,
+  Package,
   Settings,
   ShieldCheck,
   Workflow,
@@ -32,6 +33,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/", label: "Dashboard", icon: LayoutDashboard },
       { href: "/inbox", label: "Unified Inbox", icon: Inbox },
       { href: "/customers", label: "Customers", icon: Users },
+      { href: "/products", label: "Products", icon: Package },
     ],
   },
   {

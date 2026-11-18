@@ -18,6 +18,7 @@ const GENERATED = {
   CHATWOOT_SECRET_KEY_BASE: 64,
   CHATWOOT_POSTGRES_PASSWORD: 16,
   CHATWOOT_REDIS_PASSWORD: 16,
+  VOICE_SESSION_SECRET: 32,
 };
 
 const source = existsSync(envPath) ? envPath : examplePath;

@@ -5,6 +5,7 @@ from app.models.ai import AIReply, AISettings, KnowledgeArticle
 from app.models.automation import Automation, AutomationFile, AutomationRun
 from app.models.conversation import Conversation
 from app.models.customer import Customer
+from app.models.product import Product
 from app.models.webhook_event import WebhookEvent
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "Conversation",
     "Customer",
     "KnowledgeArticle",
+    "Product",
     "WebhookEvent",
 ]

@@ -90,6 +90,9 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-claude-opus-5-5}
       AI_EFFORT: ${AI_EFFORT:-low}
+      # Voice assistant on the public shop page: tickets signed here, checked by `voice`.
+      VOICE_SESSION_SECRET: ${VOICE_SESSION_SECRET:-}
+      VOICE_PUBLIC_WS_URL: ws://localhost:${NEXUS_VOICE_PORT:-8110}/ws
       # Live reload while teaching: edit a file, uvicorn restarts.
       UVICORN_RELOAD: "1"
     ports:
@@ -106,6 +109,34 @@ services:
       timeout: 5s
       retries: 12
       start_period: 15s
+
+  # Pipecat voice assistant for the shop page. Separate from the backend because
+  # Pipecat needs anthropic<2 while the backend uses anthropic 2.x.
+  voice:
+    build: ./voice
+    restart: unless-stopped
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      VOICE_AI_MODEL: ${VOICE_AI_MODEL:-claude-opus-5-5}
+      OPENAI_TTS_VOICE: ${OPENAI_TTS_VOICE:-marin}
+      NEXUS_API_URL: http://backend:8000
+      VOICE_SESSION_SECRET: ${VOICE_SESSION_SECRET:-}
+      VOICE_ALLOWED_ORIGINS: http://localhost:${NEXUS_WEB_PORT:-3100}
+      UVICORN_RELOAD: "1"
+    ports:
+      - "127.0.0.1:${NEXUS_VOICE_PORT:-8110}:8000"
+    volumes:
+      - ./voice:/app
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   frontend:
     build: ./frontend

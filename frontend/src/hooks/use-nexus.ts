@@ -21,6 +21,7 @@ import type {
   ItemList,
   KnowledgeList,
   Message,
+  Product,
   WebhookEvent,
 } from "@/lib/types";
 
@@ -133,4 +134,8 @@ export function useAdVideos() {
       data?.items.some((ad) => ad.status === "building") ? 2000 : SLOW_REFRESH_MS,
     ...retry,
   });
+}
+
+export function useProducts() {
+  return useSWR<ItemList<Product>, ApiError>("/api/v1/products", fetcher, retry);
 }

@@ -49,6 +49,13 @@ class Settings(BaseSettings):
     # only the articles that best match the conversation.
     kb_full_context_chars: int = 120_000
 
+    # Voice assistant on the public shop page (a separate Pipecat service).
+    # The backend signs a short-lived ticket; the voice service checks it with the
+    # same secret. Empty secret or URL: the shop shows products without voice.
+    voice_session_secret: str = ""
+    voice_public_ws_url: str = ""  # e.g. wss://voice-production.up.railway.app/ws
+    voice_ticket_seconds: int = 60
+
     @field_validator("database_url", mode="before")
     @classmethod
     def _use_psycopg_driver(cls, value):
@@ -74,6 +81,8 @@ class Settings(BaseSettings):
         "chatwoot_inbox_identifier",
         "nexus_api_key",
         "anthropic_api_key",
+        "voice_session_secret",
+        "voice_public_ws_url",
         mode="before",
     )
     @classmethod

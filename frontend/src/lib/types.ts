@@ -259,3 +259,31 @@ export interface AdVideo {
   output_tokens: number;
   created_at: string;
 }
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  /** Decimal as text, e.g. "450.00"; null when the price is not shown. */
+  price: string | null;
+  currency: string;
+  is_active: boolean;
+  sort_order: number;
+  /** Path on the NEXUS API, e.g. /api/v1/public/products/<id>/image?v=... */
+  image_path: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShopData {
+  business_name: string;
+  voice_enabled: boolean;
+  products: Product[];
+}
+
+export interface VoiceTicket {
+  ws_url: string;
+  token: string;
+  expires_in: number;
+}

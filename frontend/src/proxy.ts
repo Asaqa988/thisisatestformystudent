@@ -39,8 +39,11 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except the container health check and Next.js static files.
-  matcher: ["/((?!api/health$|_next/static|_next/image|favicon.ico|robots.txt).*)"],
+  // Everything except the container health check, Next.js static files, and the
+  // public shop: its page, its API door (/api/shop) and its microphone worklet.
+  matcher: [
+    "/((?!api/health$|_next/static|_next/image|favicon.ico|robots.txt|shop$|shop/|api/shop/|voice/).*)",
+  ],
 };
 
 function decodeBase64(value: string): string {

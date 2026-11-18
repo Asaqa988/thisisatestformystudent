@@ -1,0 +1,14 @@
+# NEXUS voice service: the talking assistant on the public shop page.
+#
+# A separate service from the backend because Pipecat's Anthropic extra needs
+# anthropic<2, while the backend uses anthropic 2.x. Versions are pinned and at
+# least two weeks old (pipecat-ai 1.15.0 was released 2026-10-29).
+
+pipecat-ai[anthropic,openai,websocket]==1.15.0
+uvicorn[standard]==0.54.0
+pydantic-settings==2.16.2
+httpx==0.28.1
+
+# Development
+pytest==9.2.0
+ruff==0.17.4

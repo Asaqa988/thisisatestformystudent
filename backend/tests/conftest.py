@@ -62,7 +62,7 @@ def _clean_tables():
         connection.execute(
             text(
                 "TRUNCATE ad_videos, webhook_events, ai_replies, automation_files, automation_runs,"
-                " automations, conversations, customers,"
+                " automations, conversations, customers, products,"
                 " knowledge_articles, ai_settings"
             )
         )

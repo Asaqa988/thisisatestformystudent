@@ -34,6 +34,13 @@ class Unauthorized(AppError):
     code = "unauthorized"
 
 
+class InvalidInput(AppError):
+    """The request is well-formed but its content cannot be accepted (e.g. a bad image)."""
+
+    status_code = 422
+    code = "invalid_input"
+
+
 class InvalidSignature(AppError):
     status_code = 401
     code = "invalid_signature"

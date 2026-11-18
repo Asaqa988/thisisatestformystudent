@@ -47,6 +47,7 @@ export function useVoice() {
   const playUntil = useRef(0);
   const speaking = useRef(false);
   const skipReply = useRef(false); // after "Stop", ignore the rest of that reply's audio
+  const failed = useRef(false); // the service reported an error: keep showing it
   const captionId = useRef(0);
   const listenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -111,12 +112,12 @@ export function useVoice() {
     };
 
     speaking.current = true;
-    setStatus("speaking");
+    if (!failed.current) setStatus("speaking");
     if (listenTimer.current) clearTimeout(listenTimer.current);
     const waitMs = (playUntil.current - context.currentTime + TAIL_SECONDS) * 1000;
     listenTimer.current = setTimeout(() => {
       speaking.current = false;
-      if (ws.current?.readyState === WebSocket.OPEN) setStatus("listening");
+      if (!failed.current && ws.current?.readyState === WebSocket.OPEN) setStatus("listening");
     }, waitMs);
   }, []);
 
@@ -138,6 +139,7 @@ export function useVoice() {
           setStatus("listening");
           break;
         case "error":
+          failed.current = true;
           setError(event.code ?? "failed");
           setStatus("error");
           break;
@@ -149,6 +151,7 @@ export function useVoice() {
   const start = useCallback(async () => {
     if (ws.current) return;
     setError(null);
+    failed.current = false;
     setCaptions([]);
     setStatus("connecting");
     try {
@@ -193,7 +196,10 @@ export function useVoice() {
       };
       socket.onclose = () => {
         ws.current = null;
-        teardown();
+        // Let the last words (e.g. an apology before the service hangs up) finish playing.
+        const context = playContext.current;
+        const left = context ? Math.max(0, playUntil.current - context.currentTime) : 0;
+        setTimeout(teardown, left * 1000 + 100);
         setStatus((current) => (current === "error" ? current : "ended"));
       };
       socket.onerror = () => {

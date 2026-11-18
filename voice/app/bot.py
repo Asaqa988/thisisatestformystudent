@@ -3,7 +3,7 @@
 from fastapi import WebSocket
 from loguru import logger
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.frames.frames import TTSSpeakFrame
+from pipecat.frames.frames import EndFrame, OutputTransportMessageFrame, TTSSpeakFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 from pipecat.processors.aggregators.llm_context import LLMContext
@@ -21,7 +21,9 @@ from pipecat.workers.runner import WorkerRunner
 from app.captions import BotCaptions, UserCaptions
 from app.config import Settings
 from app.prompt import TTS_INSTRUCTIONS, VoiceContext, greeting, system_prompt, transcription_hint
-from app.serializer import IN_SAMPLE_RATE, OUT_SAMPLE_RATE, PCMSerializer
+from app.serializer import EVENT_KEY, IN_SAMPLE_RATE, OUT_SAMPLE_RATE, PCMSerializer
+
+APOLOGY = "عذرًا، في مشكلة تقنية هلأ وما بقدر أجاوب. جرّب كمان شوي."
 
 
 def build_services(settings: Settings, context: VoiceContext):
@@ -97,6 +99,28 @@ async def run_session(websocket: WebSocket, settings: Settings, context: VoiceCo
         ),
         enable_rtvi=False,  # the page uses our own small event format (serializer.py)
     )
+
+    failed = False
+
+    @worker.event_handler("on_pipeline_error")
+    async def on_pipeline_error(worker, frame):
+        # A service that can no longer work (e.g. a rejected API key) would leave the
+        # visitor talking to silence. Apologise out loud, tell the page, and end.
+        nonlocal failed
+        processor = getattr(frame, "processor", None)
+        if failed or processor is None or getattr(processor, "is_usable", True):
+            return
+        failed = True
+        logger.error(f"Voice session ending: {processor} failed: {frame.error}")
+        await worker.queue_frames(
+            [
+                TTSSpeakFrame(APOLOGY),
+                OutputTransportMessageFrame(
+                    message={EVENT_KEY: 1, "type": "error", "code": "assistant_failed"}
+                ),
+                EndFrame(),
+            ]
+        )
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
